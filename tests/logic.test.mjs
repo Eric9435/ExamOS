@@ -1,0 +1,6 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {SEED_SUBJECTS,STORES} from '../src/db.js';import {grade,nextCard,chapterPercent} from '../src/logic.js';
+test('five subjects are unverified',()=>{assert.equal(SEED_SUBJECTS.length,5);assert.ok(SEED_SUBJECTS.every(x=>!x.verified))});
+test('persistent stores complete',()=>{for(const s of ['documents','attempts','exams','flashcards','reviews','oral','mistakes'])assert.ok(STORES.includes(s))});
+test('grading numerical tolerance and multi-select is deterministic',()=>{assert.equal(grade({type:'numeric',answer:'2',tolerance:'.05'},'2.04'),true);assert.equal(grade({type:'numeric',answer:'2',tolerance:'.05'},'2.1'),false);assert.equal(grade({type:'mcq',answer:'B'},'B'),true);assert.equal(grade({type:'multiselect',answer:'A|C'},'C|A'),true);assert.equal(grade({type:'short',answer:'x'},'x'),null)});
+test('chapter progress tracks checklist',()=>{assert.equal(chapterPercent({subtopics:['x','y'],completed:['x']}),50);assert.equal(chapterPercent({subtopics:[],completed:[]}),0)});
+test('SM2-like review schedules future due date',()=>{const c=nextCard({interval:1,reps:0,ease:2.5},'Easy',new Date('2026-10-17T12:00:00Z'));assert.equal(c.due,'2026-10-21');assert.equal(c.lastRating,'Easy')});
