@@ -24,3 +24,10 @@
 - Completed: browser-local passphrase-derived AES-GCM encryption for PDFs, per-document authentication, PDF read-time decryption, manual Lock, one-time private ZIP import.
 - The 81 private PDF files are **not in this repository or static Render assets**. Each browser must import them from the privately shared bundle; there is no server-side private cloud storage.
 - Limitations: local passphrase gate is not a multi-device account; notes and other study records are not encrypted; browser storage quota/clearing remain risks.
+
+## v1.5 — touch scrolling / fast scroll slider
+- Implemented vertical continuous PDF reading via in-app PDF.js canvas rendering, native touch scrolling, and a persistent draggable right-side page scrubber.
+- Virtualized canvases using IntersectionObserver with a bounded active render queue; unloaded canvases outside the reading area.
+- Maintains last-page progress and page-linked notes when scrolling. Alternative single-page mode remains accessible.
+- Added pure slider progress tests and scrolling regression tests.
+- Limitation: mixed-sized document pages use page-1 dimensions for scroll placeholders. Pixel-accurate scrolling for mixed page geometries remains future work. Real-device touch verification outstanding.

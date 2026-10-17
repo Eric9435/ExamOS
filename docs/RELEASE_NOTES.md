@@ -42,3 +42,11 @@ The upgrade changes IndexedDB from schema v3 to v4 using normal object-store mig
 - Decryption stays in browser memory and PDF.js files are served from the application origin (bundled at build).
 - Worker, cMaps and standard fonts are copied to dist; the core renderer and worker are precached for offline use.
 - Added pure page/zoom regressions. Existing encrypted documents do not require reimport.
+
+## v1.5 — Acrobat-style continuous page scrolling
+- Swipe up/down directly over PDF pages on smartphones, tablets and desktop touch displays.
+- Always-visible, touch-draggable right page rail with live page counter and keyboard access.
+- Smooth transition across pages without a fixed sidebar; single-page mode still available.
+- Lazy PDF.js canvas rendering, caching only a small viewport neighborhood for documents with hundreds of pages.
+- Page notes and progress follow the visible PDF page.
+- 26 automated tests (includes 2 new reader/scrolling tests); live Android and tablet manual acceptance still needed.

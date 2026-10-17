@@ -62,3 +62,25 @@ button:disabled,.btn:disabled{opacity:.4;cursor:not-allowed}
 .pdf-page-placeholder{margin:auto;padding:24px;display:flex;align-items:center;gap:14px;color:white;text-align:center;font-size:13px;max-width:min(520px,100%);line-height:1.7}
 @media(max-width:850px){.readerbar{display:flex;flex-direction:column;align-items:stretch}.reader-heading{width:100%;max-width:none;justify-content:space-between}.reader-document-name{max-width:calc(100vw - 138px)}.reader-toolbar{justify-content:space-between}.reader-tool-separator{display:none}.reader-searchbar>label{display:none}.reader-searchbar input{max-width:none}.reader-inline-status{max-width:160px}.pdf-page-stage{padding:12px}}
 @media(max-width:520px){.reader-hide-mobile{display:none}.readerbar .btn.small{min-width:32px;min-height:34px;padding:7px}.reader-toolbar{gap:3px}.reader-toolbar .btn{font-size:13px}.reader-page-label input{width:51px}.reader-searchbar{padding:6px 9px;gap:6px}.reader-inline-status{max-width:100px}.pdf-page-stage{padding:8px}.reader-panel{top:118px}}
+
+/* Acrobat-style touch reader, with continuous lazy-rendered pages and an always-visible page scrubber. */
+.reader-body{position:relative}
+.pdf-page-scroller{flex:1;min-width:0;width:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:#969da6 #454a50;touch-action:pan-x pan-y}
+.pdf-page-scroller::-webkit-scrollbar{width:6px;height:6px}
+.pdf-page-scroller::-webkit-scrollbar-thumb{background:#9ba8b4;border-radius:10px}
+.pdf-page-stage.pdf-page-continuous{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;min-width:100%;width:max-content;gap:14px;padding:16px 12px 32px;box-sizing:border-box}
+.pdf-sheet{flex:none;display:flex;align-items:flex-start;justify-content:center;overflow:hidden;background:#fff;box-shadow:0 5px 24px rgba(0,0,0,.26);border-radius:2px;contain:layout style paint}
+.pdf-sheet .pdf-page-canvas{box-shadow:none}
+.pdf-scrubber{position:relative;flex:0 0 46px;min-height:0;background:rgba(20,29,38,.9);border-left:1px solid #ffffff1d;z-index:1;display:flex;justify-content:center;user-select:none}
+.pdf-scrub-track{height:100%;width:100%;position:relative;touch-action:none;cursor:ns-resize;outline-offset:-3px}
+.pdf-scrub-track:focus-visible{outline:3px solid #82cfbb;outline-offset:-4px}
+.pdf-scrub-line{position:absolute;width:4px;top:26px;bottom:26px;left:calc(50% - 2px);background:#ffffff3d;border-radius:10px}
+.pdf-scrub-thumb{position:absolute;left:4px;right:4px;height:42px;top:5px;display:flex;align-items:center;justify-content:center;flex-direction:column;border:1px solid #bfe6da;background:#e3f6ef;color:#173c37;border-radius:11px;box-shadow:0 3px 14px #0008;pointer-events:none;transition:background .12s}
+.pdf-scrub-bubble{font-size:10px;font-weight:850;white-space:nowrap;font-variant-numeric:tabular-nums}
+.pdf-scrub-grip{font-size:11px;line-height:11px;letter-spacing:2px;opacity:.7}
+.pdf-scrub-track.dragging .pdf-scrub-thumb{background:#b2edd8;box-shadow:0 5px 20px #0009}
+.reader-mode-toggle{font-weight:720!important}
+@media(max-width:850px){.pdf-page-stage.pdf-page-continuous{padding:10px 5px 24px;gap:11px}.pdf-scrubber{flex-basis:42px}}
+@media(max-width:520px){.pdf-scrubber{flex-basis:42px}.pdf-scrub-thumb{left:3px;right:3px}.pdf-scrub-bubble{font-size:9px}.reader-mode-toggle{font-size:11px!important}.reader-toolbar{overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;padding-bottom:2px}.reader-toolbar::-webkit-scrollbar{display:none}}
+
+.pdf-sheet:not(.rendered)::before{content:'Page ' attr(data-pdf-page) ' · loading…';align-self:center;color:#879198;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}

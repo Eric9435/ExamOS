@@ -1,12 +1,13 @@
 import {all,get,put,del,bulk,uid,now,openDB,seed,STORES,exportFull,restore} from './db.js';
 import {clean as h,percent,chapterPercent,grade,nextCard,localDate,humanSec,mistakeTypes,taskStatuses} from './logic.js';
 import {createVault,unlockVault,sealPDF,unsealPDF} from './vault.js';
-import {clampPDFPage,readerScale,zoomStep} from './pdf-reader-logic.js';
+import {clampPDFPage,readerScale,zoomStep,progressToPage,scrollFraction} from './pdf-reader-logic.js';
 const $=s=>document.querySelector(s),root=$('#app'),date=()=>localDate();
 const nav=[['home','⌂','Overview'],['courses','▦','Subjects'],['library','▤','Document library'],['practice','◈','Question bank'],['exams','◷','Exam simulator'],['oral','◉','Oral practice'],['formulas','ƒ','Formula bank'],['flashcards','▢','Flashcards'],['notes','≡','Notes'],['planner','▣','Study planner'],['insights','▥','Insights'],['books','▧','Textbooks'],['settings','⚙','Settings']];
-let state={page:'home',subjectId:'digital',selectedQ:null,quizQ:null,quizAnswer:null,quizReveal:false,cardId:null,cardFlip:false,filter:'',reader:null,readerNote:false,readerPage:1,readerUrl:null,readerStatus:'',readerTotal:0,readerZoom:'fit',readerRotation:0,readerQuery:'',exam:null,oral:null,recording:null,importBusy:false,installPrompt:null,mobileMenu:false};
+let state={page:'home',subjectId:'digital',selectedQ:null,quizQ:null,quizAnswer:null,quizReveal:false,cardId:null,cardFlip:false,filter:'',reader:null,readerNote:false,readerPage:1,readerUrl:null,readerStatus:'',readerTotal:0,readerZoom:'fit',readerRotation:0,readerMode:'continuous',readerQuery:'',exam:null,oral:null,recording:null,importBusy:false,installPrompt:null,mobileMenu:false};
 let data={},tick=null,recorder=null,recordParts=[],readerDrag=null,recordStopResolve=null,readerAutosave=null,examAutosave=null,vaultKey=null,vaultBusy=false,vaultMessage="";
 let pdfLibPromise=null,pdfDocument=null,pdfLoadingTask=null,pdfRenderTask=null,pdfReaderGeneration=0,pdfPaintGeneration=0,pdfSearchGeneration=0,pdfTouch=null;
+let continuousView=null,readerPositionTimer=null;
 async function persistExamDraft(){if(state.exam)await put('drafts',{id:'active-exam',payload:{...state.exam,finishing:false},updatedAt:now()})}
 function queueExamDraft(){clearTimeout(examAutosave);examAutosave=setTimeout(()=>persistExamDraft().catch(console.warn),350)}
 function captureOralInputs(){if(!state.oral)return;const score=$('#oral-score'),notes=$('#oral-notes');if(score)state.oral.score=Number(score.value);if(notes)state.oral.notes=notes.value}
@@ -42,7 +43,7 @@ function relative(x){if(!x)return 'Never';return new Date(x).toLocaleDateString(
 function markScore(a){return a?.correct===null?'Needs manual review':a?.correct?'Correct':'Incorrect'}
 function overall(){const p=data.subjects.map(s=>progressFor(s.id));return percent(p.reduce((x,y)=>x+y.done,0),p.reduce((x,y)=>x+y.total,0))}
 function durationToday(){return data.sessions.filter(x=>(x.studyDay||localDate(new Date(x.started)))===date()).reduce((n,s)=>n+(s.duration||0),0)}
-function uiFrame(content){const navmenu=nav.map(([key,ico,label])=>`<button data-nav="${key}" class="${state.page===key?'active':''}"><span class="ico">${ico}</span>${h(label)}</button>`).join('');const mainMobile=[['home','⌂','Home'],['courses','▦','Courses'],['practice','◈','Practice'],['planner','▣','Plan'],['menu','☰','More']];return `<div class="layout"><aside class="sidebar" aria-label="Primary navigation"><div class="logo"><span class="logo-mark">E</span>ExamOS<span style="font-size:10px;align-self:start;margin-top:1px;opacity:.5">1.4</span></div><small>Workspace</small><nav class="nav" aria-label="Main">${navmenu}</nav><div class="sidebar-bottom">OFFLINE-FIRST WORKSPACE<br>Encrypted PDFs · Stored on this device<br><span style="color:#d3eddd">● Private by design</span></div></aside><div class="workspace"><header class="topbar"><div><div class="mobiletop">◧ ExamOS</div><div class="breadcrumb">TUHH &nbsp; / &nbsp; Master's in EEIT &nbsp; / &nbsp; ${h(nav.find(n=>n[0]===state.page)?.[2]||'Overview')}</div></div><div class="topbar-right"><span class="pill">WiSe 26/27</span><button class="round" title="Toggle theme" aria-label="Toggle theme" data-action="theme">◐</button><button class="btn small" data-action="lock-vault" title="Lock private workspace">♢ Lock</button><span class="avatar">ES</span></div></header><main class="content" id="main-content" tabindex="-1">${content}</main></div></div><nav class="bottomnav" aria-label="Mobile navigation">${mainMobile.map(([key,ico,label])=>`<button ${key==='menu'?'data-action="mobile-menu"':`data-nav="${key}"`} class="${key===state.page?'active':''}"><span class="ico">${ico}</span>${label}</button>`).join('')}</nav>`}
+function uiFrame(content){const navmenu=nav.map(([key,ico,label])=>`<button data-nav="${key}" class="${state.page===key?'active':''}"><span class="ico">${ico}</span>${h(label)}</button>`).join('');const mainMobile=[['home','⌂','Home'],['courses','▦','Courses'],['practice','◈','Practice'],['planner','▣','Plan'],['menu','☰','More']];return `<div class="layout"><aside class="sidebar" aria-label="Primary navigation"><div class="logo"><span class="logo-mark">E</span>ExamOS<span style="font-size:10px;align-self:start;margin-top:1px;opacity:.5">1.5</span></div><small>Workspace</small><nav class="nav" aria-label="Main">${navmenu}</nav><div class="sidebar-bottom">OFFLINE-FIRST WORKSPACE<br>Encrypted PDFs · Stored on this device<br><span style="color:#d3eddd">● Private by design</span></div></aside><div class="workspace"><header class="topbar"><div><div class="mobiletop">◧ ExamOS</div><div class="breadcrumb">TUHH &nbsp; / &nbsp; Master's in EEIT &nbsp; / &nbsp; ${h(nav.find(n=>n[0]===state.page)?.[2]||'Overview')}</div></div><div class="topbar-right"><span class="pill">WiSe 26/27</span><button class="round" title="Toggle theme" aria-label="Toggle theme" data-action="theme">◐</button><button class="btn small" data-action="lock-vault" title="Lock private workspace">♢ Lock</button><span class="avatar">ES</span></div></header><main class="content" id="main-content" tabindex="-1">${content}</main></div></div><nav class="bottomnav" aria-label="Mobile navigation">${mainMobile.map(([key,ico,label])=>`<button ${key==='menu'?'data-action="mobile-menu"':`data-nav="${key}"`} class="${key===state.page?'active':''}"><span class="ico">${ico}</span>${label}</button>`).join('')}</nav>`}
 function render(){document.body.classList.toggle('dark',data.settings.find(x=>x.id==='profile')?.theme==='dark');const pages={home:homePage,courses:coursesPage,library:libraryPage,practice:practicePage,exams:examsPage,oral:oralPage,formulas:formulasPage,flashcards:cardsPage,notes:notesPage,planner:plannerPage,insights:insightsPage,books:booksPage,settings:settingsPage};root.innerHTML=uiFrame((pages[state.page]||homePage)());if(state.reader)drawReader();if(state.exam)drawExam();if(state.oral)drawOral();if(state.modal)drawModal();if(state.mobileMenu)drawMobileMenu();if(state.page==='formulas')loadMath();}
 function homePage(){const pct=overall(),mins=durationToday(),profile=data.settings.find(x=>x.id==='profile'),todayTasks=data.plans.filter(x=>x.date===date()),due=data.flashcards.filter(c=>!c.due||c.due<=date()).length,incorrect=data.attempts.filter(a=>a.correct===false).length;const backupDue=(data.documents.length+data.attempts.length+data.notes.length)>0&&(!profile?.lastBackup||(Date.now()-Date.parse(profile.lastBackup)>7*86400000));const seven=Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-6+i);return {key:localDate(d),label:d.toLocaleDateString('en',{weekday:'short'}).slice(0,2),num:d.getDate()}});const latest=data.documents.slice().sort((a,b)=>(b.openedAt||b.addedAt||'').localeCompare(a.openedAt||a.addedAt||'')).slice(0,4);const weak=data.subjects.map(s=>({...s,...progressFor(s.id),errors:data.attempts.filter(x=>x.subjectId===s.id&&x.correct===false).length})).filter(s=>s.total||s.errors).sort((a,b)=>b.errors-a.errors||a.pct-b.pct).slice(0,4);
 return `${head('Your study space','A calmer way to prepare for your engineering examinations.',btn('startstudy','▶ Start studying','','primary')+btn('backup','↧ Back up data'))}${backupDue?`<div class="notice warn" role="status">Your study data has not been backed up recently. Export a local JSON backup to protect PDFs, notes, recordings and progress. ${btn('backup','Export backup','','small')}</div>`:''}<div class="grid four" style="margin-bottom:20px"><div class="card metric"><div class="label">OVERALL PROGRESS</div><div class="value">${pct}%</div><div class="progress"><i style="width:${pct}%"></i></div><div class="sub">Completed checklist items</div></div><div class="card metric"><div class="label">TODAY'S FOCUS</div><div class="value">${Math.round(mins)} <span style="font-size:16px">min</span></div><div class="sub">${profile?.dailyTarget||90} min daily goal</div></div><div class="card metric"><div class="label">REVIEW QUEUE</div><div class="value">${due}</div><div class="sub">Cards due today</div></div><div class="card metric"><div class="label">MISTAKES RECORDED</div><div class="value">${incorrect}</div><div class="sub">From real attempts</div></div></div><div class="grid main"><div class="flow-col"><div class="card"><div class="row" style="margin-bottom:19px"><h2 style="margin:0">Your subjects</h2><button class="btn small" data-nav="courses">View all →</button></div><div class="grid two">${data.subjects.map(s=>{const p=progressFor(s.id);return `<div style="border:1px solid var(--line);border-radius:13px;padding:16px;cursor:pointer" data-action="open-subject" data-id="${h(s.id)}"><div class="row"><span class="badge-dot" style="--c:${h(s.color)}"></span><span class="pill">${p.pct}%</span></div><div style="font-size:14px;font-weight:700;margin:12px 0 5px">${h(s.name)}</div><div class="sm muted">${p.chapters} chapters · ${s.credits} ECTS</div><div class="progress" style="margin-top:15px"><i style="width:${p.pct}%"></i></div></div>`}).join('')}</div></div><div class="card"><div class="row"><h2>Weekly focus</h2><span class="pill">Activity only</span></div><div class="week">${seven.map(d=>{const val=data.sessions.filter(x=>x.started?.slice(0,10)===d.key).reduce((n,s)=>n+(s.duration||0),0);return `<div class="day ${val?'has':''}"><small>${d.label}</small><strong>${d.num}</strong><small>${val?Math.round(val)+'m':'—'}</small></div>`}).join('')}</div></div><div class="card"><div class="row"><h2>Upcoming tasks</h2>${btn('new-task','+ Add task','','small')}</div>${todayTasks.length?todayTasks.map(t=>`<div class="item"><div><div class="name">${h(t.title)}</div><div class="detail">${h(sname(t.subjectId))} · ${h(t.status)}</div></div>${btn('complete-task','✓',t.id,'small')}</div>`).join(''):empty('A clear day','No tasks scheduled for today. Create a study plan when ready.')}</div></div><div class="flow-col"><div class="card" style="background:#203a41;color:#f4f7f3;border-color:#203a41"><div class="eyebrow" style="color:#a8c2b8">STUDY SESSION</div><h2 style="color:#fff;font-size:24px;letter-spacing:-.6px;margin:14px 0 8px">Small sessions. Deep focus.</h2><p style="font-size:12px;line-height:1.8;color:#afcbc7">Track the minutes that matter. Your data stays on this device.</p>${btn('startstudy','Start a focus session →','','primary')}</div><div class="card"><div class="row"><h2>Recent documents</h2><button class="btn small" data-nav="library">Open library</button></div>${latest.length?latest.map(d=>`<div class="item"><div style="min-width:0"><div class="name" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h(d.name)}</div><div class="detail">${h(sname(d.subjectId))} · ${size(d.size||0)}</div></div>${btn('read','Open',d.id,'small')}</div>`).join(''):empty('No documents yet','Upload your lecture PDFs or ZIP archives to begin.')}</div><div class="card"><h2>Upcoming examinations</h2>${data.subjects.filter(x=>x.examDate&&x.examDate>=date()).sort((a,b)=>a.examDate.localeCompare(b.examDate)).map(x=>{const days=Math.ceil((new Date(x.examDate+'T12:00:00')-new Date())/86400000);return `<div class="item"><div><div class="name">${h(x.name)}</div><div class="detail">${h(x.examDate)} · Date set by student</div></div><span class="pill">${Math.max(0,days)} days</span></div>`}).join('')||empty('No exam dates entered','Add dates in Subjects → Edit subject after checking Stud.IP.')}</div><div class="card"><h2>Areas for revision</h2>${weak.length?weak.map(x=>`<div class="item"><div><div class="name">${h(x.name)}</div><div class="detail">${x.errors} incorrect attempts · ${x.pct}% checklist</div></div><span class="pill">Review</span></div>`).join(''):empty('No weak topics identified','Mistake data appears after you practise questions.')}</div></div></div>`}
@@ -93,11 +94,95 @@ async function loadPdfRenderer(){
  }).catch(e=>{pdfLibPromise=null;throw e});
  return pdfLibPromise;
 }
+function disposeContinuousView(){
+ const view=continuousView;continuousView=null;
+ if(!view)return;
+ view.observer?.disconnect();
+ if(view.raf)cancelAnimationFrame(view.raf);
+ for(const task of view.tasks.values())try{task.cancel()}catch{}
+ view.tasks.clear();view.queued.clear();
+}
 function disposePDF(){
  ++pdfReaderGeneration;++pdfPaintGeneration;++pdfSearchGeneration;
+ clearTimeout(readerPositionTimer);disposeContinuousView();
  try{pdfRenderTask?.cancel()}catch{}pdfRenderTask=null;
  const task=pdfLoadingTask;pdfLoadingTask=null;if(task)Promise.resolve(task.destroy()).catch(()=>{});
  const pdf=pdfDocument;pdfDocument=null;if(pdf)Promise.resolve(pdf.destroy()).catch(()=>{});
+}
+function persistReaderPosition(){
+ clearTimeout(readerPositionTimer);
+ const id=state.reader?.id,page=state.readerPage;
+ if(!id)return;
+ readerPositionTimer=setTimeout(async()=>{
+  const doc=await get('documents',id);
+  if(doc)await put('documents',{...doc,lastPage:page,openedAt:now()});
+ },550);
+}
+function setReaderPageState(page){
+ const next=clampPDFPage(page,state.readerTotal);
+ if(!state.reader||next===state.readerPage)return;
+ const textarea=$('#reader-note-text');
+ if(textarea){
+  clearTimeout(readerAutosave);
+  const prior=data.notes.find(x=>x.documentId===state.reader.id&&Number(x.page)===state.readerPage);
+  if(textarea.value!==(prior?.body||''))void saveReaderNote(true).catch(console.error);
+ }
+ state.readerPage=next;
+ if(textarea)textarea.value=data.notes.find(x=>x.documentId===state.reader.id&&Number(x.page)===next)?.body||'';
+ const title=$('#reader-note-title');if(title)title.textContent=`✎ Page ${next} · Notes`;
+ syncReaderHUD();persistReaderPosition();
+}
+function syncReaderHUD(){
+ const p=state.readerPage,total=state.readerTotal;
+ const input=$('#reader-page');if(input&&document.activeElement!==input)input.value=p;
+ for(const [id,disabled] of [['reader-prev',p<=1],['reader-next',p>=total]]){
+  const btn=$(`[data-action="${id}"]`);if(btn)btn.disabled=disabled;
+ }
+ const thumb=$('#pdf-scrub-thumb'),track=$('#pdf-scrub-track');
+ if(thumb&&track&&total){
+  const scroller=$('#pdf-page-scroller');
+  const fraction=state.readerMode==='continuous'&&scroller ? scrollFraction(scroller.scrollTop,scroller.scrollHeight-scroller.clientHeight) : (total<2?0:(p-1)/(total-1));
+  thumb.style.top=`calc(5px + (100% - 52px) * ${fraction})`;
+  thumb.setAttribute('aria-label',`Page ${p} of ${total}`);
+  track.setAttribute('aria-valuenow',String(p));track.setAttribute('aria-valuetext',`Page ${p} of ${total}`);
+ }
+ const pageBubble=$('#pdf-scrub-page');if(pageBubble)pageBubble.textContent=`${p} / ${total}`;
+ const mark=$('[data-action="reader-bookmark"]');if(mark){
+  const active=data.bookmarks.some(x=>x.documentId===state.reader?.id&&Number(x.page)===p);
+  mark.innerHTML=`${active?'★':'☆'}<span class="reader-hide-mobile"> Bookmark</span>`;
+ }
+}
+function bindPdfScrubber(){
+ const track=$('#pdf-scrub-track');if(!track||!state.readerTotal)return;
+ let dragging=false,preview=state.readerPage;
+ const update=e=>{
+  const rect=track.getBoundingClientRect();
+  const fraction=Math.max(0,Math.min(1,(e.clientY-rect.top-26)/Math.max(1,rect.height-52)));
+  preview=progressToPage(fraction,state.readerTotal);
+  if(state.readerMode==='continuous'){
+   const scroller=$('#pdf-page-scroller');if(scroller)scroller.scrollTop=fraction*Math.max(0,scroller.scrollHeight-scroller.clientHeight);
+  }else{
+   const thumb=$('#pdf-scrub-thumb');if(thumb)thumb.style.top=`calc(5px + (100% - 52px) * ${fraction})`;
+   const bubble=$('#pdf-scrub-page');if(bubble)bubble.textContent=`${preview} / ${state.readerTotal}`;
+  }
+ };
+ track.addEventListener('pointerdown',e=>{
+  if(e.button!==0&&e.pointerType==='mouse')return;
+  e.preventDefault();dragging=true;track.setPointerCapture(e.pointerId);track.classList.add('dragging');update(e);
+ });
+ track.addEventListener('pointermove',e=>{if(dragging){e.preventDefault();update(e)}});
+ const finish=e=>{
+  if(!dragging)return;dragging=false;track.classList.remove('dragging');
+  try{track.releasePointerCapture(e.pointerId)}catch{}
+  if(state.readerMode==='continuous'){scheduleContinuousUpdate();persistReaderPosition();}
+  else void readerPage(preview).catch(console.error);
+ };
+ track.addEventListener('pointerup',finish);track.addEventListener('pointercancel',finish);
+ track.addEventListener('keydown',e=>{
+  const change=e.key==='ArrowDown'||e.key==='ArrowRight'?1:e.key==='ArrowUp'||e.key==='ArrowLeft'?-1:e.key==='PageDown'?10:e.key==='PageUp'?-10:0;
+  const page=e.key==='Home'?1:e.key==='End'?state.readerTotal:clampPDFPage(state.readerPage+change,state.readerTotal);
+  if(change||e.key==='Home'||e.key==='End'){e.preventDefault();void readerPage(page).catch(console.error)}
+ });
 }
 async function openReader(id,page=1){
  const doc=await get('documents',id);
@@ -105,7 +190,7 @@ async function openReader(id,page=1){
  disposePDF();const gen=pdfReaderGeneration;
  state.reader={id:doc.id,name:doc.name,subjectId:doc.subjectId};
  state.readerPage=clampPDFPage(page||doc.lastPage||1,0);state.readerTotal=0;
- state.readerZoom='fit';state.readerRotation=0;state.readerQuery='';state.readerStatus='Decrypting private PDF on this device…';state.readerNote=false;
+ state.readerZoom='fit';state.readerRotation=0;state.readerMode='continuous';state.readerQuery='';state.readerStatus='Decrypting private PDF on this device…';state.readerNote=false;
  render();
  try{
   const decrypted=await unsealPDF(doc,vaultKey);if(gen!==pdfReaderGeneration)return;
@@ -121,13 +206,98 @@ async function openReader(id,page=1){
   render();
  }catch(e){if(gen!==pdfReaderGeneration)return;state.readerStatus=`Unable to display PDF: ${e.message}`;render();console.error('ExamOS PDF viewer',e)}
 }
-function closeReader(){disposePDF();state.reader=null;state.readerStatus='';state.readerTotal=0;state.readerNote=false;render()}
+function closeReader(){const id=state.reader?.id,page=state.readerPage;disposePDF();if(id){get('documents',id).then(doc=>doc&&put('documents',{...doc,lastPage:page,openedAt:now()})).catch(console.error)}state.reader=null;state.readerStatus='';state.readerTotal=0;state.readerNote=false;render()}
 function drawReader(){
  const d=state.reader,p=state.readerPage,total=state.readerTotal,note=data.notes.find(x=>x.documentId===d.id&&String(x.page)===String(p));
  const bookmark=data.bookmarks.some(x=>x.documentId===d.id&&Number(x.page)===p);
  const loading=Boolean(state.readerStatus);
- root.insertAdjacentHTML('beforeend',`<section class="full-reader" id="reader" role="dialog" aria-modal="true" aria-label="PDF reader"><header class="readerbar"><div class="reader-heading"><button class="btn small" data-action="close-reader" aria-label="Close PDF reader">← Library</button><span class="reader-document-name" title="${h(d.name)}">${h(d.name)}</span></div><div class="reader-toolbar" aria-label="PDF tools"><button class="btn small" data-action="reader-prev" title="Previous page" aria-label="Previous page" ${p<=1?'disabled':''}>‹</button><label class="reader-page-label"><input aria-label="Current PDF page" id="reader-page" type="number" inputmode="numeric" min="1" max="${total||99999}" value="${p}" ${!total?'disabled':''}> <span aria-label="Total pages">/ ${total||'—'}</span></label><button class="btn small" data-action="reader-go" ${!total?'disabled':''}>Go</button><button class="btn small" data-action="reader-next" title="Next page" aria-label="Next page" ${!total||p>=total?'disabled':''}>›</button><span class="reader-tool-separator" aria-hidden="true"></span><button class="btn small" data-action="reader-zoom-out" aria-label="Zoom out" ${!total?'disabled':''}>−</button><button class="btn small" data-action="reader-fit" ${!total?'disabled':''}>${state.readerZoom==='fit'?'Fit width':Math.round(Number(state.readerZoom)*100)+'%'}</button><button class="btn small" data-action="reader-zoom-in" aria-label="Zoom in" ${!total?'disabled':''}>+</button><button class="btn small" data-action="reader-rotate" title="Rotate clockwise" aria-label="Rotate clockwise" ${!total?'disabled':''}>↻</button><button class="btn small" data-action="reader-bookmark" ${!total?'disabled':''}>${bookmark?'★':'☆'}<span class="reader-hide-mobile"> Bookmark</span></button><button class="btn small" data-action="reader-note-toggle">✎<span class="reader-hide-mobile"> Notes</span></button><button class="btn small" data-action="reader-fullscreen" aria-label="Fullscreen">⛶</button></div></header><div class="reader-searchbar"><label for="reader-search-text">Find text:</label><input type="search" id="reader-search-text" value="${h(state.readerQuery||'')}" placeholder="Search this PDF (text-based files)" aria-label="Search PDF text"><button class="btn small" data-action="reader-search" ${!total?'disabled':''}>Find next</button><span class="reader-inline-status" id="reader-inline-status" role="status" aria-live="polite">${loading?h(state.readerStatus):''}</span></div><div class="reader-body"><div class="pdf-page-scroller" id="pdf-page-scroller" tabindex="0" aria-label="PDF page canvas; use arrow keys to turn pages"><div class="pdf-page-stage" id="pdf-page-stage">${loading?`<div class="pdf-page-placeholder" role="status"><span class="tinyspinner"></span> ${h(state.readerStatus)}</div>`:'<div class="pdf-page-placeholder" role="status"><span class="tinyspinner"></span> Rendering page…</div>'}</div></div></div>${state.readerNote?`<div class="reader-panel" id="reader-panel" style="${state.readerDock==='left'?'left:14px;right:auto':''}"><div class="dragbar" id="dragbar"><span>✎ Page ${p} · Notes</span><button type="button" class="pill-btn" data-action="reader-note-toggle" aria-label="Hide notes">×</button></div><textarea aria-label="Page notes" id="reader-note-text" placeholder="Write notes linked to this PDF page…">${h(note?.body||'')}</textarea><div class="panel-actions"><button class="btn small primary" data-action="reader-save-note">Save note</button><button class="btn small" data-action="reader-dock-left">Dock left</button><button class="btn small" data-action="reader-dock-right">Right</button></div></div>`:`<button class="btn primary reader-note-toggle" data-action="reader-note-toggle">✎ Notes</button>`}</section>`);
- if(pdfDocument&&!loading)requestAnimationFrame(()=>paintPDFPage());
+ disposeContinuousView();
+ root.insertAdjacentHTML('beforeend',`<section class="full-reader" id="reader" role="dialog" aria-modal="true" aria-label="PDF reader"><header class="readerbar"><div class="reader-heading"><button class="btn small" data-action="close-reader" aria-label="Close PDF reader">← Library</button><span class="reader-document-name" title="${h(d.name)}">${h(d.name)}</span></div><div class="reader-toolbar" aria-label="PDF tools"><button class="btn small" data-action="reader-prev" title="Previous page" aria-label="Previous page" ${p<=1?'disabled':''}>‹</button><label class="reader-page-label"><input aria-label="Current PDF page" id="reader-page" type="number" inputmode="numeric" min="1" max="${total||99999}" value="${p}" ${!total?'disabled':''}> <span aria-label="Total pages">/ ${total||'—'}</span></label><button class="btn small" data-action="reader-go" ${!total?'disabled':''}>Go</button><button class="btn small" data-action="reader-next" title="Next page" aria-label="Next page" ${!total||p>=total?'disabled':''}>›</button><button class="btn small reader-mode-toggle" data-action="reader-view-mode" title="Switch reading mode" ${!total?'disabled':''}>${state.readerMode==='continuous'?'↕ Scroll':'▣ Single'}<span class="reader-hide-mobile"> mode</span></button><span class="reader-tool-separator" aria-hidden="true"></span><button class="btn small" data-action="reader-zoom-out" aria-label="Zoom out" ${!total?'disabled':''}>−</button><button class="btn small" data-action="reader-fit" ${!total?'disabled':''}>${state.readerZoom==='fit'?'Fit width':Math.round(Number(state.readerZoom)*100)+'%'}</button><button class="btn small" data-action="reader-zoom-in" aria-label="Zoom in" ${!total?'disabled':''}>+</button><button class="btn small" data-action="reader-rotate" title="Rotate clockwise" aria-label="Rotate clockwise" ${!total?'disabled':''}>↻</button><button class="btn small" data-action="reader-bookmark" ${!total?'disabled':''}>${bookmark?'★':'☆'}<span class="reader-hide-mobile"> Bookmark</span></button><button class="btn small" data-action="reader-note-toggle">✎<span class="reader-hide-mobile"> Notes</span></button><button class="btn small" data-action="reader-fullscreen" aria-label="Fullscreen">⛶</button></div></header><div class="reader-searchbar"><label for="reader-search-text">Find text:</label><input type="search" id="reader-search-text" value="${h(state.readerQuery||'')}" placeholder="Search this PDF (text-based files)" aria-label="Search PDF text"><button class="btn small" data-action="reader-search" ${!total?'disabled':''}>Find next</button><span class="reader-inline-status" id="reader-inline-status" role="status" aria-live="polite">${loading?h(state.readerStatus):''}</span></div><div class="reader-body"><div class="pdf-page-scroller" id="pdf-page-scroller" tabindex="0" aria-label="PDF document. Swipe up or down to scroll through pages; drag the right page slider to jump." ><div class="pdf-page-stage ${state.readerMode==='continuous'?'pdf-page-continuous':''}" id="pdf-page-stage">${loading?`<div class="pdf-page-placeholder" role="status"><span class="tinyspinner"></span> ${h(state.readerStatus)}</div>`:'<div class="pdf-page-placeholder" role="status"><span class="tinyspinner"></span> Rendering page…</div>'}</div></div>${total?`<div class="pdf-scrubber" aria-label="Fast PDF navigation"><div class="pdf-scrub-track" id="pdf-scrub-track" role="slider" tabindex="0" aria-label="Drag to jump to a PDF page" aria-orientation="vertical" aria-valuemin="1" aria-valuemax="${total}" aria-valuenow="${p}" aria-valuetext="Page ${p} of ${total}"><div class="pdf-scrub-line"></div><div class="pdf-scrub-thumb" id="pdf-scrub-thumb"><span class="pdf-scrub-bubble" id="pdf-scrub-page">${p} / ${total}</span><span class="pdf-scrub-grip" aria-hidden="true">⋮⋮</span></div></div></div>`:''}</div>${state.readerNote?`<div class="reader-panel" id="reader-panel" style="${state.readerDock==='left'?'left:14px;right:auto':''}"><div class="dragbar" id="dragbar"><span id="reader-note-title">✎ Page ${p} · Notes</span><button type="button" class="pill-btn" data-action="reader-note-toggle" aria-label="Hide notes">×</button></div><textarea aria-label="Page notes" id="reader-note-text" placeholder="Write notes linked to this PDF page…">${h(note?.body||'')}</textarea><div class="panel-actions"><button class="btn small primary" data-action="reader-save-note">Save note</button><button class="btn small" data-action="reader-dock-left">Dock left</button><button class="btn small" data-action="reader-dock-right">Right</button></div></div>`:`<button class="btn primary reader-note-toggle" data-action="reader-note-toggle">✎ Notes</button>`}</section>`);
+ bindPdfScrubber();
+ if(pdfDocument&&!loading){
+  const stage=$('#pdf-page-stage');
+  requestAnimationFrame(()=>{if(stage!==$('#pdf-page-stage'))return;state.readerMode==='continuous'?void initContinuousReader().catch(e=>readerCanvasError(e)):void paintPDFPage()});
+ }
+}
+function readerCanvasError(e){console.error('ExamOS continuous PDF reader',e);const stage=$('#pdf-page-stage');if(stage){const alert=document.createElement('div');alert.className='pdf-page-placeholder';alert.setAttribute('role','alert');alert.textContent=`Could not render PDF pages: ${e.message}`;stage.replaceChildren(alert)}}
+function currentContinuousPage(view){
+ const scroller=view.scroller,top=scroller.scrollTop+Math.min(110,scroller.clientHeight*.2);
+ const pages=view.sheets;let lo=0,hi=pages.length-1;
+ while(lo<hi){const mid=Math.ceil((lo+hi)/2);if(pages[mid].offsetTop<=top)lo=mid;else hi=mid-1}
+ return lo+1;
+}
+function scheduleContinuousUpdate(){
+ const view=continuousView;if(!view||view.raf)return;
+ view.raf=requestAnimationFrame(()=>{
+  view.raf=0;if(continuousView!==view)return;
+  setReaderPageState(currentContinuousPage(view));syncReaderHUD();
+  // Memory is bounded even for 505-page documents: only nearby canvases stay allocated.
+  for(const [page,task] of view.tasks){if(Math.abs(page-state.readerPage)>4){try{task.cancel()}catch{}view.tasks.delete(page)}}
+  for(const n of [...view.loaded])if(Math.abs(n-state.readerPage)>4){
+   view.loaded.delete(n);const sheet=view.sheets[n-1];if(sheet){sheet.replaceChildren();sheet.classList.remove('rendered')}
+  }
+  pumpContinuousQueue(view);
+ });
+}
+function queueContinuousPage(view,n){
+ if(continuousView!==view||n<1||n>view.sheets.length||view.loaded.has(n)||view.tasks.has(n))return;
+ view.queued.add(n);pumpContinuousQueue(view);
+}
+function pumpContinuousQueue(view){
+ if(continuousView!==view)return;
+ for(const n of [...view.queued])if(Math.abs(n-state.readerPage)>5)view.queued.delete(n);
+ while(view.active<2&&view.queued.size){
+  const n=[...view.queued].sort((a,b)=>Math.abs(a-state.readerPage)-Math.abs(b-state.readerPage))[0];
+  view.queued.delete(n);view.active++;
+  void renderContinuousPage(view,n).catch(e=>{if(e.name!=='RenderingCancelledException')console.error('PDF page',n,e)}).finally(()=>{view.active--;pumpContinuousQueue(view)});
+ }
+}
+async function renderContinuousPage(view,n){
+ if(continuousView!==view||Math.abs(n-state.readerPage)>5)return;
+ const page=await view.pdf.getPage(n);
+ if(continuousView!==view||Math.abs(n-state.readerPage)>5)return;
+ const sheet=view.sheets[n-1];if(!sheet?.isConnected)return;
+ const base=page.getViewport({scale:1,rotation:state.readerRotation});
+ const scale=readerScale(state.readerZoom,base.width,view.availableWidth);
+ const viewport=page.getViewport({scale,rotation:state.readerRotation});
+ const ratio=Math.max(.5,Math.min(2,window.devicePixelRatio||1,Math.sqrt(12000000/(viewport.width*viewport.height))));
+ const canvas=document.createElement('canvas');canvas.className='pdf-page-canvas';canvas.setAttribute('aria-label',`Page ${n} of ${view.pdf.numPages}`);
+ canvas.width=Math.max(1,Math.round(viewport.width*ratio));canvas.height=Math.max(1,Math.round(viewport.height*ratio));
+ canvas.style.width=`${viewport.width}px`;canvas.style.height=`${viewport.height}px`;
+ const ctx=canvas.getContext('2d',{alpha:false});if(!ctx)throw Error('Canvas unsupported');
+ const task=page.render({canvasContext:ctx,viewport,transform:[ratio,0,0,ratio,0,0]});view.tasks.set(n,task);
+ try{await task.promise}catch(e){if(e.name!=='RenderingCancelledException')throw e;return}finally{if(view.tasks.get(n)===task)view.tasks.delete(n)}
+ if(continuousView!==view||Math.abs(n-state.readerPage)>5)return;
+ sheet.replaceChildren(canvas);sheet.classList.add('rendered');view.loaded.add(n);page.cleanup();
+}
+async function initContinuousReader(){
+ const stage=$('#pdf-page-stage'),scroller=$('#pdf-page-scroller'),pdf=pdfDocument;
+ if(!stage||!scroller||!pdf||state.readerMode!=='continuous')return;
+ disposeContinuousView();
+ const gen=pdfReaderGeneration;
+ const first=await pdf.getPage(1);
+ if(gen!==pdfReaderGeneration||stage!==$('#pdf-page-stage')||state.readerMode!=='continuous')return;
+ const base=first.getViewport({scale:1,rotation:state.readerRotation});
+ const availableWidth=Math.max(220,scroller.clientWidth-(window.innerWidth<850?16:40));
+ const scale=readerScale(state.readerZoom,base.width,availableWidth);
+ const viewport=first.getViewport({scale,rotation:state.readerRotation});
+ const width=Math.ceil(viewport.width),height=Math.ceil(viewport.height);
+ const frag=document.createDocumentFragment(),sheets=[];
+ for(let n=1;n<=pdf.numPages;n++){
+  const sheet=document.createElement('section');sheet.className='pdf-sheet';sheet.dataset.pdfPage=String(n);
+  sheet.style.width=`${width}px`;sheet.style.height=`${height}px`;
+  sheet.setAttribute('aria-label',`PDF page ${n} of ${pdf.numPages}`);
+  frag.append(sheet);sheets.push(sheet);
+ }
+ stage.replaceChildren(frag);
+ const view={pdf,stage,scroller,sheets,availableWidth,loaded:new Set(),tasks:new Map(),queued:new Set(),active:0,observer:null,raf:0};
+ continuousView=view;
+ view.observer=new IntersectionObserver(entries=>{for(const e of entries)if(e.isIntersecting)queueContinuousPage(view,Number(e.target.dataset.pdfPage))},{root:scroller,rootMargin:'900px 0px',threshold:0});
+ sheets.forEach(el=>view.observer.observe(el));
+ scroller.addEventListener('scroll',()=>scheduleContinuousUpdate(),{passive:true});
+ const target=sheets[state.readerPage-1];if(target)scroller.scrollTop=target.offsetTop-stage.offsetTop;
+ syncReaderHUD();scheduleContinuousUpdate();
+ for(let n=Math.max(1,state.readerPage-1);n<=Math.min(pdf.numPages,state.readerPage+2);n++)queueContinuousPage(view,n);
 }
 async function paintPDFPage(){
  const pdf=pdfDocument,docId=state.reader?.id,pageNumber=state.readerPage,gen=++pdfPaintGeneration;
@@ -152,8 +322,13 @@ async function paintPDFPage(){
 }
 async function readerPage(p){
  if(!state.reader)return;
+ const next=clampPDFPage(p,state.readerTotal);
+ if(state.readerMode==='continuous'&&continuousView){
+  const view=continuousView,target=view.sheets[next-1];
+  if(target){setReaderPageState(next);view.scroller.scrollTo({top:target.offsetTop-view.stage.offsetTop,behavior:'auto'});scheduleContinuousUpdate();return}
+ }
  if(state.readerNote&&$('#reader-note-text'))await saveReaderNote(true);
- state.readerPage=clampPDFPage(p,state.readerTotal);
+ state.readerPage=next;
  const doc=await get('documents',state.reader.id);if(doc)await put('documents',{...doc,lastPage:state.readerPage,openedAt:now()});
  render();
 }
@@ -228,6 +403,7 @@ case 'chapter-pdf':{const c=data.chapters.find(x=>x.id===id);const d=data.docume
 case 'chapter-notes':{const c=data.chapters.find(x=>x.id===id);state.subjectId=c.subjectId;openModal('new-note');break}
 case 'reader-note-toggle':state.readerNote=!state.readerNote;render();break;
 case 'reader-prev':await readerPage(state.readerPage-1);break;case 'reader-next':await readerPage(state.readerPage+1);break;case 'reader-go':await readerPage(Number($('#reader-page')?.value||1));break;
+ case 'reader-view-mode':state.readerMode=state.readerMode==='continuous'?'single':'continuous';render();break;
  case 'reader-zoom-in':state.readerZoom=zoomStep(state.readerZoom,1);render();break;case 'reader-zoom-out':state.readerZoom=zoomStep(state.readerZoom,-1);render();break;case 'reader-fit':state.readerZoom='fit';render();break;case 'reader-rotate':state.readerRotation=(state.readerRotation+90)%360;render();break;case 'reader-search':await readerFind();break;
 case 'reader-bookmark':{const prev=data.bookmarks.find(x=>x.documentId===state.reader.id&&Number(x.page)===state.readerPage);if(prev)await del('bookmarks',prev.id);else await put('bookmarks',{id:uid(),documentId:state.reader.id,page:state.readerPage,createdAt:now()});await refresh();break}
 case 'reader-save-note':await saveReaderNote();break;
@@ -294,4 +470,4 @@ window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();state.insta
 window.addEventListener('beforeunload',e=>{if(state.exam||state.oral||state.sessionStart){e.preventDefault();e.returnValue='An active session is unfinished.'}});
 async function start(){try{await openDB();await seed();const draft=await get('drafts','active-exam');if(draft?.payload?.ids?.length&&draft.payload.started){state.exam=draft.payload;state.page='exams'}await refresh();if(state.exam)reTick();if('serviceWorker'in navigator&&location.protocol==='https:'||location.hostname==='localhost'){navigator.serviceWorker?.register('/sw.js').catch(console.warn)}}catch(e){root.innerHTML=`<main style="margin:50px auto;max-width:600px;padding:20px"><h1>ExamOS could not open local storage</h1><p>${h(e.message)}</p><p>Check browser permissions, storage availability and private browsing restrictions.</p></main>`;console.error(e)}}start();
 
-let resizeReaderTimer;window.addEventListener('resize',()=>{if(!state.reader||!pdfDocument||state.readerZoom!=='fit')return;clearTimeout(resizeReaderTimer);resizeReaderTimer=setTimeout(()=>paintPDFPage(),250)});
+let resizeReaderTimer;window.addEventListener('resize',()=>{if(!state.reader||!pdfDocument||state.readerZoom!=='fit')return;clearTimeout(resizeReaderTimer);resizeReaderTimer=setTimeout(()=>state.readerMode==='continuous'?render():paintPDFPage(),250)});
