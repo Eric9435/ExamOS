@@ -1,3 +1,18 @@
+## ExamOS 1.7 — iOS-inspired screen navigation
+
+- Converted subject selection from in-page syllabus expansion to dedicated, full-width subject screens.
+- Converted chapter selection into a dedicated chapter screen with checklists and lecture access.
+- Question-bank selections open focused single-question screens rather than a side panel far down the page.
+- Flashcard browsing and formula recall open standalone detail views.
+- Added Back navigation, browser-history restoration, scroll-to-top on forward navigation, prior-position restoration on Back, and subtle reduced-motion-aware transitions.
+- Added accessible grouped list rows, safe-area mobile navigation, and polished mobile/tablet typography.
+- Preserved the private PDF vault, imported files, continuous finger-scroll PDF reader, quiz history, and offline PWA model.
+- No AI APIs, models, or cloud uploads.
+
+**Testing:** automated unit/regression tests and Render production build. Manual Android/tablet interaction requires device testing.
+
+---
+
 ## Version 1.2 — GitHub-ready build
 
 - Pinned build-time JSZip and MathJax dependencies, bundled into static output; core app needs no runtime API.

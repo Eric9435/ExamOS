@@ -1,3 +1,9 @@
+## ExamOS 1.7: iOS-style navigation
+
+Subject, chapter, practice question, flashcard, and formula-recall selections now open dedicated screens instead of expanding sections below lists. Back navigation integrates browser history; forward navigation starts at the top of the new view. Responsive grouped lists and sheet-style modals improve touch use. PDF swipe scrolling remains unchanged. Private PDFs are never published in GitHub or Render.
+
+**QA caveat:** automated tests and Render build can be verified; Android/iOS/tablet touch behavior still needs on-device acceptance testing.
+
 ## Version 1.2 — GitHub-ready build
 
 - Pinned build-time JSZip and MathJax dependencies, bundled into static output; core app needs no runtime API.

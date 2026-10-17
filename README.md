@@ -1,3 +1,7 @@
+# ExamOS — TUHH Study Workspace (v1.7)
+
+This release uses iOS-inspired navigation: choose a subject to open its own screen, choose a chapter to open a separate lesson screen, and use Back to return. Questions, flashcards, and formula recall likewise open dedicated workspaces rather than appearing far down a scrolling list. Navigation starts at the top and supports browser history. PDF documents continue to open in the local encrypted PDF.js reader, with finger-only continuous scrolling.
+
 # ExamOS — TUHH EEIT Exam Preparation
 
 **Version:** 1.5.0 (touch PDF scrolling and private offline vault)  

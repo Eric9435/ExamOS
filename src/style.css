@@ -75,3 +75,49 @@ button:disabled,.btn:disabled{opacity:.4;cursor:not-allowed}
 @media(max-width:520px){.reader-mode-toggle{font-size:11px!important}.reader-toolbar{overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;padding-bottom:2px}.reader-toolbar::-webkit-scrollbar{display:none}}
 
 .pdf-sheet:not(.rendered)::before{content:'Page ' attr(data-pdf-page) ' · loading…';align-self:center;color:#879198;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
+
+/* ExamOS 1.7 — iOS-inspired drill-down navigation (not an expanding dashboard). */
+:root{--radius:23px;--paper:#f7f8fa;--soft:#f2f4f6;--line:#e7e9ed;--ink:#172c32;--muted:#728087;--accent:#176d60;--shadow:0 5px 24px rgba(19,37,43,.035)}
+body.dark{--paper:#101419;--surface:#1a2027;--soft:#242d34;--line:#344049;--ink:#eff4f7;--muted:#a7b5be;--accent:#93ddc7}
+body{overscroll-behavior-y:contain}
+.content{max-width:1200px;padding-top:34px}
+.ios-navbar-leading{display:flex;align-items:center;gap:16px;min-width:0}
+.ios-brand{font-weight:850;letter-spacing:-.06em;font-size:19px}.ios-brand-dot{color:var(--accent)}
+.ios-top-title{font-weight:700;font-size:14px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ios-back{border:0;background:transparent;color:var(--accent);font-size:15px;font-weight:650;display:flex;align-items:center;gap:2px;padding:10px 4px 10px 0;min-height:44px;white-space:nowrap}
+.ios-back>span{font-size:35px;font-weight:300;line-height:18px;transform:translateY(-1px)}
+.app-version{font-size:10px;opacity:.62;align-self:start;margin-top:2px;letter-spacing:0}
+.ios-group{background:var(--surface);border:1px solid var(--line);border-radius:20px;overflow:hidden;box-shadow:var(--shadow)}
+.ios-group-title{color:var(--muted);font-size:11px;font-weight:740;letter-spacing:1.05px;margin:25px 5px 10px;text-transform:uppercase}
+.ios-list-row,.ios-check-row{display:flex;width:100%;align-items:center;gap:14px;background:var(--surface);color:var(--ink);border:0;border-bottom:1px solid var(--line);padding:17px 20px;min-height:74px;text-align:left;cursor:pointer;touch-action:manipulation}
+.ios-list-row:last-child,.ios-check-row:last-child{border-bottom:0}.ios-list-row:hover{background:var(--soft)}.ios-list-row:active{background:var(--accent2)}
+.ios-row-main{min-width:0;flex:1;display:grid;gap:5px}.ios-row-main strong{font-size:15px;font-weight:670;line-height:1.35;overflow-wrap:anywhere}.ios-row-main small{font-size:12px;color:var(--muted);line-height:1.5}
+.ios-chevron{font-size:29px;color:#b4c1ca;font-weight:280;line-height:1;align-self:center}
+.ios-row-meta{font-size:12px;font-weight:750;color:var(--accent);white-space:nowrap}
+.ios-number{font-size:14px;color:var(--muted);font-weight:750;min-width:29px;font-variant-numeric:tabular-nums}
+.ios-course-icon{width:44px;height:44px;flex:none;border-radius:13px;background:var(--soft);display:grid;place-items:center;color:var(--accent);font-size:12px;font-weight:800;border-left:4px solid var(--course-color,var(--accent))}
+.ios-pdf-icon{font-size:10px;letter-spacing:.3px}.ios-text-row{cursor:default}.ios-text-row:hover{background:var(--surface)}
+.ios-hero{background:var(--surface);border:1px solid var(--line);border-radius:24px;padding:25px 26px;margin:0 0 24px;box-shadow:var(--shadow)}
+.ios-hero-value{font-size:clamp(40px,6vw,60px);letter-spacing:-.065em;font-weight:770;margin:7px 0 12px;line-height:1}.ios-hero p{color:var(--muted);font-size:13px;line-height:1.65;margin:12px 0 0}.ios-hero .btn{margin-top:20px;min-height:45px}
+.ios-bottom-actions{display:flex;gap:12px;flex-wrap:wrap;margin:22px 0 35px}.ios-bottom-actions .btn{min-height:44px}
+.ios-footnote{font-size:12px;color:var(--muted);padding:10px 5px;line-height:1.65}
+.ios-checklist{padding:0}.ios-check-row{cursor:pointer;font-size:14px;line-height:1.55}.ios-check-row input{width:21px;height:21px;flex:none;accent-color:var(--accent)}
+.ios-compact-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.ios-compact-stats>div{border-radius:19px;background:var(--surface);border:1px solid var(--line);padding:22px 16px;display:grid;gap:5px}.ios-compact-stats b{font-size:27px;letter-spacing:-1px}.ios-compact-stats span{font-size:11px;color:var(--muted)}
+.ios-search{margin:0 0 13px}.ios-search input{width:100%;max-width:620px;background:var(--surface);border-radius:13px;min-height:46px}
+.ios-workspace-card{background:var(--surface);padding:clamp(18px,4vw,32px);border:1px solid var(--line);border-radius:23px;min-height:40vh;max-width:850px}
+.ios-flashcard-area{max-width:700px;margin:auto}.ios-flashcard-area .flashcard{min-height:340px;box-shadow:0 16px 50px rgba(24,50,55,.07);font-size:clamp(21px,3vw,28px)}
+.ios-flashcard-area .rating button{min-height:48px}
+.head h1{font-size:clamp(30px,4vw,42px);line-height:1.12}.head{gap:20px}
+@keyframes ios-view-push{from{opacity:.55;transform:translateX(32px)}to{opacity:1;transform:translateX(0)}}
+@keyframes ios-view-pop{from{opacity:.75;transform:translateX(-16px)}to{opacity:1;transform:translateX(0)}}
+.ios-motion-push{animation:ios-view-push .24s cubic-bezier(.2,.8,.2,1) both}.ios-motion-pop{animation:ios-view-pop .2s ease-out both}
+.bottomnav{background:color-mix(in srgb,var(--surface) 88%,transparent);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px)}
+@media(min-width:851px){.sidebar{width:244px}.sidebar .logo{font-size:26px}.topbar{height:76px}.ios-detail-screen{max-width:1100px}}
+@media(max-width:850px){.topbar{height:58px;padding:0 16px;backdrop-filter:blur(23px);-webkit-backdrop-filter:blur(23px)}.ios-brand{font-size:17px}.ios-top-title{font-size:13px}.content{padding:22px 16px calc(110px + env(safe-area-inset-bottom))}.ios-list-row{min-height:77px}.ios-hero{padding:22px}.ios-bottom-actions{gap:9px}.bottomnav{height:calc(61px + env(safe-area-inset-bottom))}}
+@media(max-width:520px){.ios-group{border-radius:17px}.ios-list-row,.ios-check-row{padding:15px 14px;gap:11px}.ios-row-main strong{font-size:14px}.ios-row-main small{font-size:11px}.ios-course-icon{width:40px;height:40px}.ios-top-title{max-width:42vw}.semester-tag{display:none}.vault-lock{font-size:11px!important;padding:7px!important}.topbar-right{gap:5px}.ios-compact-stats>div{padding:16px 11px}.ios-compact-stats b{font-size:24px}.ios-flashcard-area .flashcard{min-height:280px}.ios-bottom-actions .btn{flex-grow:1}.overlay .modal{width:100%;max-height:92dvh;border-radius:24px 24px 0 0;padding-bottom:max(20px,env(safe-area-inset-bottom))}}
+@media(prefers-reduced-motion:reduce){.ios-motion-push,.ios-motion-pop{animation:none!important}}
+
+/* Keyboard-accessible iOS-style course launchers on Today */
+.ios-home-course{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;cursor:pointer;text-align:left;color:var(--ink);display:block;width:100%;min-width:0;transition:transform .15s ease,box-shadow .15s ease}
+.ios-home-course:hover{transform:translateY(-2px);box-shadow:var(--shadow)}.ios-home-course:active{transform:scale(.995)}
+@media(prefers-reduced-motion:reduce){.ios-home-course{transition:none}}
