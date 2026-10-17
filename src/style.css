@@ -39,3 +39,26 @@ button:disabled,.btn:disabled{opacity:.4;cursor:not-allowed}
 .dark .vault-gate{background:radial-gradient(ellipse at 80% 0%,#244c49 0,transparent 65%),#121e21;color:#f6faf9}
 .dark .vault-card{background:#19282a;border-color:#354f4d}
 .dark .vault-card h1{color:#f5faf8}
+
+/* ExamOS 1.4 integrated, private PDF canvas reader — optimized for phone/tablet. */
+.full-reader{height:100dvh;overflow:hidden}
+.readerbar{flex:0 0 auto;min-height:60px;gap:9px;padding:9px max(12px,env(safe-area-inset-left))}
+.reader-heading{display:flex;align-items:center;gap:11px;min-width:0;max-width:350px}
+.reader-document-name{font-size:13px;font-weight:720;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px}
+.reader-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:5px;min-width:0}
+.readerbar .btn.small{min-width:33px;min-height:35px;touch-action:manipulation}
+.readerbar .btn:disabled{opacity:.38;cursor:default}
+.reader-page-label{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--muted);white-space:nowrap}
+.reader-page-label input{width:62px;padding:7px 6px;text-align:center;font-size:13px;min-height:35px}
+.reader-tool-separator{height:23px;border-left:1px solid var(--line);margin:0 2px}
+.reader-searchbar{display:flex;align-items:center;gap:8px;padding:7px 13px;border-bottom:1px solid var(--line);background:var(--surface);flex:0 0 auto;min-height:43px}
+.reader-searchbar>label{font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap}
+.reader-searchbar input{font-size:12px;padding:8px 11px;min-height:34px;max-width:min(360px,45vw);flex:1}
+.reader-inline-status{color:var(--muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.reader-body{background:#454a50;overflow:hidden;min-height:0}
+.pdf-page-scroller{height:100%;width:100%;overflow:auto;overscroll-behavior:contain;display:flex;justify-content:flex-start;align-items:flex-start;touch-action:pan-x pan-y;outline-offset:-3px}
+.pdf-page-stage{min-height:100%;min-width:100%;width:max-content;display:flex;align-items:flex-start;justify-content:center;padding:20px;box-sizing:border-box}
+.pdf-page-canvas{background:white;max-width:none;box-shadow:0 6px 35px #0005;display:block;flex:none}
+.pdf-page-placeholder{margin:auto;padding:24px;display:flex;align-items:center;gap:14px;color:white;text-align:center;font-size:13px;max-width:min(520px,100%);line-height:1.7}
+@media(max-width:850px){.readerbar{display:flex;flex-direction:column;align-items:stretch}.reader-heading{width:100%;max-width:none;justify-content:space-between}.reader-document-name{max-width:calc(100vw - 138px)}.reader-toolbar{justify-content:space-between}.reader-tool-separator{display:none}.reader-searchbar>label{display:none}.reader-searchbar input{max-width:none}.reader-inline-status{max-width:160px}.pdf-page-stage{padding:12px}}
+@media(max-width:520px){.reader-hide-mobile{display:none}.readerbar .btn.small{min-width:32px;min-height:34px;padding:7px}.reader-toolbar{gap:3px}.reader-toolbar .btn{font-size:13px}.reader-page-label input{width:51px}.reader-searchbar{padding:6px 9px;gap:6px}.reader-inline-status{max-width:100px}.pdf-page-stage{padding:8px}.reader-panel{top:118px}}

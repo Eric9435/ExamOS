@@ -14,6 +14,12 @@ if(!zipSource||!mathSource||!existsSync(join(mathSource,'MathJax.js'))) throw Er
 mkdirSync(join(dist,'vendor','MathJax'),{recursive:true});
 cpSync(zipSource,join(dist,'vendor','jszip.min.js'));
 cpSync(mathSource,join(dist,'vendor','MathJax'),{recursive:true});
+// Bundle PDF.js locally. PDFs are decrypted and rendered exclusively in the browser.
+const pdfRoot=join(root,'node_modules','pdfjs-dist');
+if(!existsSync(join(pdfRoot,'build','pdf.mjs'))||!existsSync(join(pdfRoot,'build','pdf.worker.mjs')))throw Error('Build requires pdfjs-dist@5.4.296. Run npm install.');
+const pdfOut=join(dist,'vendor','pdfjs');mkdirSync(pdfOut,{recursive:true});
+for(const name of ['pdf.mjs','pdf.worker.mjs'])cpSync(join(pdfRoot,'build',name),join(pdfOut,name));
+for(const name of ['cmaps','standard_fonts','wasm'])if(existsSync(join(pdfRoot,name)))cpSync(join(pdfRoot,name),join(pdfOut,name),{recursive:true});
 writeFileSync(join(dist,'_redirects'),'/*    /index.html   200\n');
 // Generate compliant PNG icons without checking binary assets or font files into Git.
 function crc32(bytes){let crc=0xffffffff;for(const b of bytes){crc^=b;for(let j=0;j<8;j++)crc=(crc>>>1)^((crc&1)?0xedb88320:0)}return(crc^0xffffffff)>>>0}

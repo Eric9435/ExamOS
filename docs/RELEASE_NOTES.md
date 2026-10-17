@@ -33,3 +33,12 @@ The upgrade changes IndexedDB from schema v3 to v4 using normal object-store mig
 - Added a combined private 81-PDF import archive **distributed separately from GitHub/Render**. The archive is not uploaded to the public site.
 - Added Web Crypto and import-regression automated tests, 20 tests total.
 - Security scope: PDF contents encrypted only. Notes, filenames, exams and recordings remain local but unencrypted. No server-side account or cloud sync. Test manually on Android/tablet before relying on one-device storage.
+
+
+## v1.4 — On-screen PDF reader
+- Replaced the native browser PDF frame with a private PDF.js canvas reader, working on mobile browsers without native PDF preview support.
+- Open PDFs in-app with previous/next, page jump, fit-width zoom, zoom controls, rotation, fullscreen, keyboard navigation, bookmarks and page notes.
+- Local text search for selectable-text PDFs; image-only scans require OCR and are not falsely indexed.
+- Decryption stays in browser memory and PDF.js files are served from the application origin (bundled at build).
+- Worker, cMaps and standard fonts are copied to dist; the core renderer and worker are precached for offline use.
+- Added pure page/zoom regressions. Existing encrypted documents do not require reimport.
