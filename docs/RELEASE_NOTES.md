@@ -50,3 +50,8 @@ The upgrade changes IndexedDB from schema v3 to v4 using normal object-store mig
 - Lazy PDF.js canvas rendering, caching only a small viewport neighborhood for documents with hundreds of pages.
 - Page notes and progress follow the visible PDF page.
 - 26 automated tests (includes 2 new reader/scrolling tests); live Android and tablet manual acceptance still needed.
+
+## v1.6 — uncluttered PDF scrolling
+- Removed the always-visible right-side fast page slider from the reader.
+- Pages now occupy the available reading width; touch/trackpad/wheel continuous scrolling remains.
+- No changes to encrypted document storage or prior imports.

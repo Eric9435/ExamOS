@@ -6,7 +6,7 @@
 **Specialization:** Control and Power Systems Engineering  
 **Semester:** Winter 2026/27
 
-ExamOS is a privacy-oriented examination workspace for Android, tablet and desktop. It runs on **static hosting**, with **no account, backend, AI API, AI chat, paid external service, or model keys**. Local study data and original uploaded PDF bytes are stored in browser **IndexedDB**. A local PDF.js canvas reader with continuous finger scrolling, a draggable page scrubber, and private page-linked notes are provided. Original PDF files stay encrypted at rest in the browser.
+ExamOS is a privacy-oriented examination workspace for Android, tablet and desktop. It runs on **static hosting**, with **no account, backend, AI API, AI chat, paid external service, or model keys**. Local study data and original uploaded PDF bytes are stored in browser **IndexedDB**. A local PDF.js canvas reader with continuous finger scrolling, unobstructed finger scrolling, and private page-linked notes are provided. Original PDF files stay encrypted at rest in the browser.
 
 ## Get running
 
@@ -50,7 +50,7 @@ No chapters or tasks are marked completed on first launch. The four initial lite
 
 - **Home:** course overview, progress based on completed checklist items, saved study minutes, tasks, due cards, previous files, mistake summaries.
 - **Courses:** add/edit subjects, import JSON/CSV chapter data, add/edit chapter ranges, chapter checklist progress.
-- **Documents:** upload original PDF, ZIP of PDFs, organize folders, an in-app PDF.js reader, touch/swipe continuous vertical page scrolling, right-side draggable fast-page scrollbar, optional single-page mode, page number input, text search in PDFs with selectable text, fit-width zoom/rotation/fullscreen, bookmarks, last-page recovery and a draggable notes panel. PDF bytes are not modified on annotation.
+- **Documents:** upload original PDF, ZIP of PDFs, organize folders, an in-app PDF.js reader, touch/swipe continuous vertical page scrolling, optional single-page mode, page number input, text search in PDFs with selectable text, fit-width zoom/rotation/fullscreen, bookmarks, last-page recovery and a draggable notes panel. PDF bytes are not modified on annotation.
 - **Question bank:** write/import MCQ, multiselect, true/false, numerical-with-absolute-tolerance, fill-in, short/long, derivation, diagram and oral questions. Solutions are hidden until reveal/submit. Free-text answers are manually graded.
 - **Timed exams:** select source-based questions, duration, navigation, flags, pause, submission, automatic objective scoring, local draft recovery after refresh and saved exam history.
 - **Oral studio:** source-based question cards, duration, microphone recording with consent, saved audio and 0–5 self-rating; no speech transcription.
@@ -119,11 +119,11 @@ ExamOS is a **public static website**; there is no server-side login, backend, p
 
 **Copyright:** Recovered lectures, archived exams and book chapters may be copyright protected. Original PDFs, private ZIPs, passwords, and backup data are excluded from the public repository and Render deployment. Only use them for authorized personal study.
 
-## v1.5 touch PDF reading
-- Open a private lecture PDF and **swipe directly on the page** to read vertically across consecutive pages. No sidebar is required.
-- Drag the **right-side vertical page slider** up/down to quickly scrub across a long document. Page numbers follow the thumb; the rail supports keyboard arrow, Home/End and Page Up/Down.
-- Tap **↕ Scroll mode** to switch to the alternative single-page viewer; use Previous/Next or the page field in either mode.
-- Only pages near the visible viewport are rendered as canvases. Distant page canvases are released, reducing tablet/Android memory use.
-- All PDF bytes remain private and encrypted at rest. There is no PDF upload to Render or GitHub, and old imported PDFs do not need re-importing.
+## v1.6: uncluttered touch scrolling
+- Open a private lecture PDF and **swipe up/down on the PDF itself** for continuous reading.
+- The right-hand draggable PDF page slider and native visible scrollbar are removed; the PDF uses the full available reader width.
+- The existing Previous/Next page buttons, page-number input, bookmarks, search, floating notes and optional single-page mode remain available.
+- Lazy page rendering keeps nearby canvases in memory, even for 505-page lecture documents.
+- Original PDFs remain encrypted in local storage. No re-import or account is needed after this update.
 
-**QA:** Node unit tests cover slider boundary math, lazy render wiring, vault encryption and the existing reader. Test swiping and large-PDF memory behavior on your own Android/tablet before relying on it for exams.
+**QA:** Automated tests check slider removal and scroll-mode wiring. Test finger scrolling on Android and tablet before relying on it for exams.

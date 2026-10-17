@@ -31,3 +31,8 @@
 - Maintains last-page progress and page-linked notes when scrolling. Alternative single-page mode remains accessible.
 - Added pure slider progress tests and scrolling regression tests.
 - Limitation: mixed-sized document pages use page-1 dimensions for scroll placeholders. Pixel-accurate scrolling for mixed page geometries remains future work. Real-device touch verification outstanding.
+
+## v1.6 — scroll-only reading
+- Removed the prominent right-side page slider, its pointer handlers, and associated layout rail.
+- Hidden native visual scrollbar while preserving touch, mouse wheel, trackpad and keyboard scrolling.
+- Continuous mode remains the default, with no need to reimport previously encrypted PDFs.

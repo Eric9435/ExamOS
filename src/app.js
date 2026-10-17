@@ -1,7 +1,7 @@
 import {all,get,put,del,bulk,uid,now,openDB,seed,STORES,exportFull,restore} from './db.js';
 import {clean as h,percent,chapterPercent,grade,nextCard,localDate,humanSec,mistakeTypes,taskStatuses} from './logic.js';
 import {createVault,unlockVault,sealPDF,unsealPDF} from './vault.js';
-import {clampPDFPage,readerScale,zoomStep,progressToPage,scrollFraction} from './pdf-reader-logic.js';
+import {clampPDFPage,readerScale,zoomStep} from './pdf-reader-logic.js';
 const $=s=>document.querySelector(s),root=$('#app'),date=()=>localDate();
 const nav=[['home','⌂','Overview'],['courses','▦','Subjects'],['library','▤','Document library'],['practice','◈','Question bank'],['exams','◷','Exam simulator'],['oral','◉','Oral practice'],['formulas','ƒ','Formula bank'],['flashcards','▢','Flashcards'],['notes','≡','Notes'],['planner','▣','Study planner'],['insights','▥','Insights'],['books','▧','Textbooks'],['settings','⚙','Settings']];
 let state={page:'home',subjectId:'digital',selectedQ:null,quizQ:null,quizAnswer:null,quizReveal:false,cardId:null,cardFlip:false,filter:'',reader:null,readerNote:false,readerPage:1,readerUrl:null,readerStatus:'',readerTotal:0,readerZoom:'fit',readerRotation:0,readerMode:'continuous',readerQuery:'',exam:null,oral:null,recording:null,importBusy:false,installPrompt:null,mobileMenu:false};
@@ -138,51 +138,10 @@ function syncReaderHUD(){
  for(const [id,disabled] of [['reader-prev',p<=1],['reader-next',p>=total]]){
   const btn=$(`[data-action="${id}"]`);if(btn)btn.disabled=disabled;
  }
- const thumb=$('#pdf-scrub-thumb'),track=$('#pdf-scrub-track');
- if(thumb&&track&&total){
-  const scroller=$('#pdf-page-scroller');
-  const fraction=state.readerMode==='continuous'&&scroller ? scrollFraction(scroller.scrollTop,scroller.scrollHeight-scroller.clientHeight) : (total<2?0:(p-1)/(total-1));
-  thumb.style.top=`calc(5px + (100% - 52px) * ${fraction})`;
-  thumb.setAttribute('aria-label',`Page ${p} of ${total}`);
-  track.setAttribute('aria-valuenow',String(p));track.setAttribute('aria-valuetext',`Page ${p} of ${total}`);
- }
- const pageBubble=$('#pdf-scrub-page');if(pageBubble)pageBubble.textContent=`${p} / ${total}`;
  const mark=$('[data-action="reader-bookmark"]');if(mark){
   const active=data.bookmarks.some(x=>x.documentId===state.reader?.id&&Number(x.page)===p);
   mark.innerHTML=`${active?'★':'☆'}<span class="reader-hide-mobile"> Bookmark</span>`;
  }
-}
-function bindPdfScrubber(){
- const track=$('#pdf-scrub-track');if(!track||!state.readerTotal)return;
- let dragging=false,preview=state.readerPage;
- const update=e=>{
-  const rect=track.getBoundingClientRect();
-  const fraction=Math.max(0,Math.min(1,(e.clientY-rect.top-26)/Math.max(1,rect.height-52)));
-  preview=progressToPage(fraction,state.readerTotal);
-  if(state.readerMode==='continuous'){
-   const scroller=$('#pdf-page-scroller');if(scroller)scroller.scrollTop=fraction*Math.max(0,scroller.scrollHeight-scroller.clientHeight);
-  }else{
-   const thumb=$('#pdf-scrub-thumb');if(thumb)thumb.style.top=`calc(5px + (100% - 52px) * ${fraction})`;
-   const bubble=$('#pdf-scrub-page');if(bubble)bubble.textContent=`${preview} / ${state.readerTotal}`;
-  }
- };
- track.addEventListener('pointerdown',e=>{
-  if(e.button!==0&&e.pointerType==='mouse')return;
-  e.preventDefault();dragging=true;track.setPointerCapture(e.pointerId);track.classList.add('dragging');update(e);
- });
- track.addEventListener('pointermove',e=>{if(dragging){e.preventDefault();update(e)}});
- const finish=e=>{
-  if(!dragging)return;dragging=false;track.classList.remove('dragging');
-  try{track.releasePointerCapture(e.pointerId)}catch{}
-  if(state.readerMode==='continuous'){scheduleContinuousUpdate();persistReaderPosition();}
-  else void readerPage(preview).catch(console.error);
- };
- track.addEventListener('pointerup',finish);track.addEventListener('pointercancel',finish);
- track.addEventListener('keydown',e=>{
-  const change=e.key==='ArrowDown'||e.key==='ArrowRight'?1:e.key==='ArrowUp'||e.key==='ArrowLeft'?-1:e.key==='PageDown'?10:e.key==='PageUp'?-10:0;
-  const page=e.key==='Home'?1:e.key==='End'?state.readerTotal:clampPDFPage(state.readerPage+change,state.readerTotal);
-  if(change||e.key==='Home'||e.key==='End'){e.preventDefault();void readerPage(page).catch(console.error)}
- });
 }
 async function openReader(id,page=1){
  const doc=await get('documents',id);
@@ -212,8 +171,7 @@ function drawReader(){
  const bookmark=data.bookmarks.some(x=>x.documentId===d.id&&Number(x.page)===p);
  const loading=Boolean(state.readerStatus);
  disposeContinuousView();
- root.insertAdjacentHTML('beforeend',`<section class="full-reader" id="reader" role="dialog" aria-modal="true" aria-label="PDF reader"><header class="readerbar"><div class="reader-heading"><button class="btn small" data-action="close-reader" aria-label="Close PDF reader">← Library</button><span class="reader-document-name" title="${h(d.name)}">${h(d.name)}</span></div><div class="reader-toolbar" aria-label="PDF tools"><button class="btn small" data-action="reader-prev" title="Previous page" aria-label="Previous page" ${p<=1?'disabled':''}>‹</button><label class="reader-page-label"><input aria-label="Current PDF page" id="reader-page" type="number" inputmode="numeric" min="1" max="${total||99999}" value="${p}" ${!total?'disabled':''}> <span aria-label="Total pages">/ ${total||'—'}</span></label><button class="btn small" data-action="reader-go" ${!total?'disabled':''}>Go</button><button class="btn small" data-action="reader-next" title="Next page" aria-label="Next page" ${!total||p>=total?'disabled':''}>›</button><button class="btn small reader-mode-toggle" data-action="reader-view-mode" title="Switch reading mode" ${!total?'disabled':''}>${state.readerMode==='continuous'?'↕ Scroll':'▣ Single'}<span class="reader-hide-mobile"> mode</span></button><span class="reader-tool-separator" aria-hidden="true"></span><button class="btn small" data-action="reader-zoom-out" aria-label="Zoom out" ${!total?'disabled':''}>−</button><button class="btn small" data-action="reader-fit" ${!total?'disabled':''}>${state.readerZoom==='fit'?'Fit width':Math.round(Number(state.readerZoom)*100)+'%'}</button><button class="btn small" data-action="reader-zoom-in" aria-label="Zoom in" ${!total?'disabled':''}>+</button><button class="btn small" data-action="reader-rotate" title="Rotate clockwise" aria-label="Rotate clockwise" ${!total?'disabled':''}>↻</button><button class="btn small" data-action="reader-bookmark" ${!total?'disabled':''}>${bookmark?'★':'☆'}<span class="reader-hide-mobile"> Bookmark</span></button><button class="btn small" data-action="reader-note-toggle">✎<span class="reader-hide-mobile"> Notes</span></button><button class="btn small" data-action="reader-fullscreen" aria-label="Fullscreen">⛶</button></div></header><div class="reader-searchbar"><label for="reader-search-text">Find text:</label><input type="search" id="reader-search-text" value="${h(state.readerQuery||'')}" placeholder="Search this PDF (text-based files)" aria-label="Search PDF text"><button class="btn small" data-action="reader-search" ${!total?'disabled':''}>Find next</button><span class="reader-inline-status" id="reader-inline-status" role="status" aria-live="polite">${loading?h(state.readerStatus):''}</span></div><div class="reader-body"><div class="pdf-page-scroller" id="pdf-page-scroller" tabindex="0" aria-label="PDF document. Swipe up or down to scroll through pages; drag the right page slider to jump." ><div class="pdf-page-stage ${state.readerMode==='continuous'?'pdf-page-continuous':''}" id="pdf-page-stage">${loading?`<div class="pdf-page-placeholder" role="status"><span class="tinyspinner"></span> ${h(state.readerStatus)}</div>`:'<div class="pdf-page-placeholder" role="status"><span class="tinyspinner"></span> Rendering page…</div>'}</div></div>${total?`<div class="pdf-scrubber" aria-label="Fast PDF navigation"><div class="pdf-scrub-track" id="pdf-scrub-track" role="slider" tabindex="0" aria-label="Drag to jump to a PDF page" aria-orientation="vertical" aria-valuemin="1" aria-valuemax="${total}" aria-valuenow="${p}" aria-valuetext="Page ${p} of ${total}"><div class="pdf-scrub-line"></div><div class="pdf-scrub-thumb" id="pdf-scrub-thumb"><span class="pdf-scrub-bubble" id="pdf-scrub-page">${p} / ${total}</span><span class="pdf-scrub-grip" aria-hidden="true">⋮⋮</span></div></div></div>`:''}</div>${state.readerNote?`<div class="reader-panel" id="reader-panel" style="${state.readerDock==='left'?'left:14px;right:auto':''}"><div class="dragbar" id="dragbar"><span id="reader-note-title">✎ Page ${p} · Notes</span><button type="button" class="pill-btn" data-action="reader-note-toggle" aria-label="Hide notes">×</button></div><textarea aria-label="Page notes" id="reader-note-text" placeholder="Write notes linked to this PDF page…">${h(note?.body||'')}</textarea><div class="panel-actions"><button class="btn small primary" data-action="reader-save-note">Save note</button><button class="btn small" data-action="reader-dock-left">Dock left</button><button class="btn small" data-action="reader-dock-right">Right</button></div></div>`:`<button class="btn primary reader-note-toggle" data-action="reader-note-toggle">✎ Notes</button>`}</section>`);
- bindPdfScrubber();
+ root.insertAdjacentHTML('beforeend',`<section class="full-reader" id="reader" role="dialog" aria-modal="true" aria-label="PDF reader"><header class="readerbar"><div class="reader-heading"><button class="btn small" data-action="close-reader" aria-label="Close PDF reader">← Library</button><span class="reader-document-name" title="${h(d.name)}">${h(d.name)}</span></div><div class="reader-toolbar" aria-label="PDF tools"><button class="btn small" data-action="reader-prev" title="Previous page" aria-label="Previous page" ${p<=1?'disabled':''}>‹</button><label class="reader-page-label"><input aria-label="Current PDF page" id="reader-page" type="number" inputmode="numeric" min="1" max="${total||99999}" value="${p}" ${!total?'disabled':''}> <span aria-label="Total pages">/ ${total||'—'}</span></label><button class="btn small" data-action="reader-go" ${!total?'disabled':''}>Go</button><button class="btn small" data-action="reader-next" title="Next page" aria-label="Next page" ${!total||p>=total?'disabled':''}>›</button><button class="btn small reader-mode-toggle" data-action="reader-view-mode" title="Switch reading mode" ${!total?'disabled':''}>${state.readerMode==='continuous'?'↕ Scroll':'▣ Single'}<span class="reader-hide-mobile"> mode</span></button><span class="reader-tool-separator" aria-hidden="true"></span><button class="btn small" data-action="reader-zoom-out" aria-label="Zoom out" ${!total?'disabled':''}>−</button><button class="btn small" data-action="reader-fit" ${!total?'disabled':''}>${state.readerZoom==='fit'?'Fit width':Math.round(Number(state.readerZoom)*100)+'%'}</button><button class="btn small" data-action="reader-zoom-in" aria-label="Zoom in" ${!total?'disabled':''}>+</button><button class="btn small" data-action="reader-rotate" title="Rotate clockwise" aria-label="Rotate clockwise" ${!total?'disabled':''}>↻</button><button class="btn small" data-action="reader-bookmark" ${!total?'disabled':''}>${bookmark?'★':'☆'}<span class="reader-hide-mobile"> Bookmark</span></button><button class="btn small" data-action="reader-note-toggle">✎<span class="reader-hide-mobile"> Notes</span></button><button class="btn small" data-action="reader-fullscreen" aria-label="Fullscreen">⛶</button></div></header><div class="reader-searchbar"><label for="reader-search-text">Find text:</label><input type="search" id="reader-search-text" value="${h(state.readerQuery||'')}" placeholder="Search this PDF (text-based files)" aria-label="Search PDF text"><button class="btn small" data-action="reader-search" ${!total?'disabled':''}>Find next</button><span class="reader-inline-status" id="reader-inline-status" role="status" aria-live="polite">${loading?h(state.readerStatus):''}</span></div><div class="reader-body"><div class="pdf-page-scroller" id="pdf-page-scroller" tabindex="0" aria-label="PDF document. Swipe up or down to scroll through pages." ><div class="pdf-page-stage ${state.readerMode==='continuous'?'pdf-page-continuous':''}" id="pdf-page-stage">${loading?`<div class="pdf-page-placeholder" role="status"><span class="tinyspinner"></span> ${h(state.readerStatus)}</div>`:'<div class="pdf-page-placeholder" role="status"><span class="tinyspinner"></span> Rendering page…</div>'}</div></div></div>${state.readerNote?`<div class="reader-panel" id="reader-panel" style="${state.readerDock==='left'?'left:14px;right:auto':''}"><div class="dragbar" id="dragbar"><span id="reader-note-title">✎ Page ${p} · Notes</span><button type="button" class="pill-btn" data-action="reader-note-toggle" aria-label="Hide notes">×</button></div><textarea aria-label="Page notes" id="reader-note-text" placeholder="Write notes linked to this PDF page…">${h(note?.body||'')}</textarea><div class="panel-actions"><button class="btn small primary" data-action="reader-save-note">Save note</button><button class="btn small" data-action="reader-dock-left">Dock left</button><button class="btn small" data-action="reader-dock-right">Right</button></div></div>`:`<button class="btn primary reader-note-toggle" data-action="reader-note-toggle">✎ Notes</button>`}</section>`);
  if(pdfDocument&&!loading){
   const stage=$('#pdf-page-stage');
   requestAnimationFrame(()=>{if(stage!==$('#pdf-page-stage'))return;state.readerMode==='continuous'?void initContinuousReader().catch(e=>readerCanvasError(e)):void paintPDFPage()});

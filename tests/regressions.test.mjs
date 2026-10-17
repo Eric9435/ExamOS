@@ -67,7 +67,7 @@ test('no AI APIs or providers are used',()=>{
 test('PWA files are present and cache is revisioned',()=>{
  const root=new URL('../',import.meta.url);
  for(const name of ['index.html','public/sw.js','public/manifest.webmanifest','public/icon.svg','public/zip-worker.js','render.yaml'])assert.ok(existsSync(new URL(name,root)));
- const sw=file('../public/sw.js');assert.match(sw,/examos-shell-v1\.5\.0/);
+ const sw=file('../public/sw.js');assert.match(sw,/examos-shell-v1\.6\.0/);
 });
 
 test('private PDF import is always encrypted before IndexedDB storage and decrypted for reading',()=>{
