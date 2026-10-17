@@ -53,6 +53,7 @@ function base64ToBlob(str,type='application/pdf'){const bin=atob(str);const chun
 /** Validate every record and decode binary attachments before starting a single atomic IDB transaction. */
 export async function restore(json){
  if(json?.format!=='ExamOSBackup'||![3,4].includes(json.version)||!json.stores||!Array.isArray(json.stores.subjects))throw Error('Unsupported or corrupted ExamOS backup');
+ if((json.stores.documents||[]).some(d=>d?.encrypted)&&!(json.stores.settings||[]).some(s=>s?.id==='pdf-vault'&&s?.format==='ExamOSPDFVault'))throw Error('Encrypted backup is missing its PDF vault configuration.');
  const decoded={};
  for(const s of STORES){
   const rows=json.stores[s]??[];

@@ -18,3 +18,9 @@
 | 8. PWA & deployment | Build-ready | Offline shell, service worker, manifest/icons, Render static site scripts, npm tests | Device compatibility and end-to-end offline-install acceptance testing |
 
 **Important:** App build and unit tests passed in the container, but full browser E2E was blocked by policy and no end-user device testing was possible. The PDF component does not fully meet the requested advanced PDF.js reader specification. No functionality is represented as an AI tutor or powered by an AI service.
+
+
+## v1.3 PDF privacy
+- Completed: browser-local passphrase-derived AES-GCM encryption for PDFs, per-document authentication, PDF read-time decryption, manual Lock, one-time private ZIP import.
+- The 81 private PDF files are **not in this repository or static Render assets**. Each browser must import them from the privately shared bundle; there is no server-side private cloud storage.
+- Limitations: local passphrase gate is not a multi-device account; notes and other study records are not encrypted; browser storage quota/clearing remain risks.

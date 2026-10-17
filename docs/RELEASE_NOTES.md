@@ -27,3 +27,9 @@
 
 ## User data migration
 The upgrade changes IndexedDB from schema v3 to v4 using normal object-store migration. Do **not** clear site storage. Export a backup before deploying upgrades, particularly if you have uploaded large lecture PDFs or oral recordings.
+
+## ExamOS 1.3 — Private local PDF vault
+- Added passphrase-gated AES-256-GCM encrypted PDF import and local storage, per-document authenticated decryption, a Lock control, and one-time personal course import instructions.
+- Added a combined private 81-PDF import archive **distributed separately from GitHub/Render**. The archive is not uploaded to the public site.
+- Added Web Crypto and import-regression automated tests, 20 tests total.
+- Security scope: PDF contents encrypted only. Notes, filenames, exams and recordings remain local but unencrypted. No server-side account or cloud sync. Test manually on Android/tablet before relying on one-device storage.

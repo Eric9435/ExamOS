@@ -9,3 +9,7 @@
 - **Limited verification:** static analysis/unit tests and builds are repeatable in CI. An independent professional penetration test, Android device matrix, PDF mutation-fuzzing and end-to-end browser testing have not been completed.
 
 If distributing or publishing a fork, review the service-worker scope, Content Security Policy, MathJax/JSZip versions, and dependencies. No keys should be checked into source control.
+
+
+### Local encrypted PDF vault (v1.3)
+PDF binary content is encrypted in the user's browser with Web Crypto AES-GCM before IndexedDB persistence. Browser-derived keys are never committed, uploaded or transmitted. A fresh passphrase is needed on each refresh. Raw PDF bytes can exist transiently in browser memory/renderer as required for viewing, and the user-supplied import ZIP is itself unencrypted. Filenames, notes, chapter progress, exam history, and oral recordings are currently not encrypted at rest, and the login-like local vault gate is not a remotely verified user account. No multi-device sync is provided. Strong device security and offline backups are essential.

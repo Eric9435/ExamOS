@@ -67,5 +67,17 @@ test('no AI APIs or providers are used',()=>{
 test('PWA files are present and cache is revisioned',()=>{
  const root=new URL('../',import.meta.url);
  for(const name of ['index.html','public/sw.js','public/manifest.webmanifest','public/icon.svg','public/zip-worker.js','render.yaml'])assert.ok(existsSync(new URL(name,root)));
- const sw=file('../public/sw.js');assert.match(sw,/examos-shell-v1\.2\.0/);
+ const sw=file('../public/sw.js');assert.match(sw,/examos-shell-v1\.3\.0/);
+});
+
+test('private PDF import is always encrypted before IndexedDB storage and decrypted for reading',()=>{
+ const app=readFileSync(new URL('../src/app.js',import.meta.url),'utf8');
+ assert.match(app,/sealPDF\(blob,vaultKey,id\)/);
+ assert.match(app,/unsealPDF\(doc,vaultKey\)/);
+ assert.match(app,/root\.addEventListener\('submit'/);
+ assert.match(app,/vault-unlock/);
+ assert.match(app,/vault-setup/);
+ assert.match(app,/lock-vault/);
+ const sw=readFileSync(new URL('../public/sw.js',import.meta.url),'utf8');
+ assert.ok(sw.includes("'/src/vault.js'"));
 });

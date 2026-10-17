@@ -101,3 +101,20 @@ See [`docs/GITHUB_AND_RENDER.md`](docs/GITHUB_AND_RENDER.md) for repository init
 Code is a functional offline-first foundation, **not a finished full PDF.js authoring suite**. The PDF view delegates to the browser PDF plugin and may not render inline on all Android versions. Browser-driven end-to-end tests are not yet completed. Full local study functionality requires current Chrome, microphone permission for oral recording, and available browser quota.
 
 Third-party open-source notices: [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md). Verification evidence: [`docs/VERIFICATION_REPORT.md`](docs/VERIFICATION_REPORT.md).
+
+
+## Private PDF vault (v1.3)
+
+ExamOS is a **public static website**; there is no server-side login, backend, private file server, or cloud synchronization. To protect uploaded lecture content, create a local passphrase on first use. The passphrase derives a nonextractable AES-256-GCM key with PBKDF2 SHA-256 (310,000 iterations, random 128-bit salt). PDFs are authenticated with per-document 96-bit IVs and stored encrypted in IndexedDB. The key remains only in the active tab's memory and is forgotten on refresh or manual Lock. The reader temporarily decrypts each document to a revocable object URL.
+
+**What is and is not protected:** Document PDF contents are encrypted at rest. Filenames, chapter indexes, study notes, exam history, microphone recordings, and other metadata **are not encrypted at rest**; the app's local passphrase screen is not a server authentication system and does not protect against a compromised device, browser extensions, or malicious scripts. Keep your browser/device secure. Use a unique long passphrase. Password recovery is impossible without the original passphrase.
+
+### Import your 81 personal course PDFs
+
+1. Keep `ExamOS_TUHH_81_Private_PDFs_One_Time_Import.zip` outside public GitHub/Render. It is **not encrypted** before import.
+2. On `https://examos-tuhh.onrender.com` on your own device, create a private PDF vault passphrase (at least 12 characters).
+3. Open **Document library** → **Import private course ZIP / PDF** → choose the private ZIP file. The browser categorizes and encrypts the PDFs without sending originals to any server.
+4. Import once *on each browser/device*: IndexedDB is not shared between devices. The ZIP is about 188 MiB, and some mobile devices may lack enough RAM/storage for one import. If an all-in-one import fails, import the five smaller private subject ZIPs instead.
+5. Make a secure offline backup, keep the vault passphrase, and request persistent browser storage under Settings. The backup exports encrypted PDF bytes, but other saved activity is in cleartext; store backups safely.
+
+**Copyright:** Recovered lectures, archived exams and book chapters may be copyright protected. Original PDFs, private ZIPs, passwords, and backup data are excluded from the public repository and Render deployment. Only use them for authorized personal study.

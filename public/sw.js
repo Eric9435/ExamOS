@@ -1,6 +1,6 @@
-/* ExamOS 1.2 PWA — offline shell with safe resource fallbacks. */
-const CACHE='examos-shell-v1.2.0';
-const SHELL=['/','/index.html','/src/app.js','/src/db.js','/src/style.css','/src/logic.js','/manifest.webmanifest','/icon.svg','/icon-192.png','/icon-512.png','/vendor/jszip.min.js','/zip-worker.js','/vendor/MathJax/MathJax.js','/vendor/MathJax/config/TeX-AMS-MML_HTMLorMML-full.js'];
+/* ExamOS 1.3 PWA — offline shell with safe resource fallbacks. */
+const CACHE='examos-shell-v1.3.0';
+const SHELL=['/','/index.html','/src/app.js','/src/db.js','/src/vault.js','/src/style.css','/src/logic.js','/manifest.webmanifest','/icon.svg','/icon-192.png','/icon-512.png','/vendor/jszip.min.js','/zip-worker.js','/vendor/MathJax/MathJax.js','/vendor/MathJax/config/TeX-AMS-MML_HTMLorMML-full.js'];
 self.addEventListener('install',e=>{
  e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()));
 });
